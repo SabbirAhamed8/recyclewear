@@ -1,0 +1,4 @@
+.checkout-box { text-align: center; }
+.product-preview { border: 1px solid #ddd; padding: 20px; margin: 20px auto; max-width: 400px; background: #fff; border-radius: 8px; }
+.price-tag { color: #2E7D32; font-size: 2rem; margin: 10px 0; }
+.cancel-link { color: red; text-decoration: none; margin-top: 15px; display: inline-block; }
