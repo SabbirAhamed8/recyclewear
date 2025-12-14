@@ -13,11 +13,47 @@
         <div class="dashboard-section" style="background: #e3f2fd; text-align: center;">
             <h2 style="margin:0; color:#0d47a1;">Total Revenue</h2>
             <h1 style="margin:10px 0; font-size: 3rem; color:#2E7D32;">$<?php echo number_format($revenue, 2); ?></h1>
+            <!-- <small style="color:#555;">(Calculated via SQL Stored Procedure)</small> -->
         </div>
 
+        <div class="dashboard-section">
+            <h3>Recent Sales Report</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Driver</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php 
+                if($result_report->num_rows > 0) {
+                    while($rep = $result_report->fetch_assoc()) {
+                        // Use a check in case driver name is NULL
+                        $d_name = $rep['driver_name'] ? $rep['driver_name'] : "<span style='color:orange'>Pending</span>";
+                        echo "<tr>
+                                <td>#{$rep['order_id']}</td>
+                                <td>{$rep['order_date']}</td>
+                                <td>{$rep['customer_name']}</td>
+                                <td>{$rep['product_name']}</td>
+                                <td>\${$rep['price']}</td>
+                                <td>{$d_name}</td>
+                              </tr>";
+                    }
+                } else {
+                    echo "<tr><td colspan='6' style='text-align:center;'>No sales found.</td></tr>";
+                }
+                ?>
+                </tbody>
+            </table>
+        </div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
             <div class="dashboard-section">
-                <h3>Inventory</h3>
+                <h3>Inventory Stats</h3>
                 <ul><?php while($row=$result_stats->fetch_assoc()) echo "<li><b>{$row['category']}:</b> {$row['count']} Items</li>"; ?></ul>
             </div>
             <div class="dashboard-section">
@@ -59,7 +95,6 @@
             echo "<table><tr><th>ID</th><th>Status</th><th>Driver</th><th>Action</th></tr>";
             
             while($row=$res->fetch_assoc()){
-                // Dropdown of free drivers
                 $drivers=""; 
                 $dres=$conn->query("SELECT * FROM Driver WHERE availability=1");
                 while($d=$dres->fetch_assoc()) $drivers.="<option value='{$d['driver_id']}'>ID:{$d['driver_id']} - {$d['name']}</option>";
@@ -70,29 +105,21 @@
                         <td>".($row['driver_name'] ?? 'None')."</td>
                         <td>";
                 
-                // --- NEW LOGIC START ---
                 if($row['status'] == 'Pending') {
-                    // 1. PENDING: Show Assign Form
                     echo "<form method='post' style='display:flex;gap:5px;'>
                             <input type='hidden' name='request_id' value='{$row['request_id']}'>
                             <select name='driver_id' required><option value=''>Select Driver</option>$drivers</select>
                             <button name='assign_pickup_driver'>Assign</button>
                           </form>";
-
                 } elseif ($row['status'] == 'Scheduled') {
-                    // 2. SCHEDULED: Show Remove/Change Option
-                    echo "<form method='post' onsubmit='return confirm(\"Change driver? This will reset request to Pending.\");'>
+                    echo "<form method='post' onsubmit='return confirm(\"Change driver?\");'>
                             <input type='hidden' name='request_id' value='{$row['request_id']}'>
                             <input type='hidden' name='assigned_driver_id' value='{$row['assigned_driver_id']}'>
                             <button name='remove_pickup_driver' style='background:#f44336; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer;'>Remove / Change</button>
                           </form>";
-
                 } else {
-                    // 3. PICKED UP / COMPLETED: Show Nothing or 'Done'
                     echo "<span style='color:green; font-weight:bold;'>Completed</span>";
                 }
-                // --- NEW LOGIC END ---
-
                 echo "</td></tr>";
             }
             echo "</table>";
@@ -104,11 +131,13 @@
             <table><thead><tr><th>Order</th><th>Status</th><th>Assign</th></tr></thead><tbody>
             <?php
             $orders = $conn->query("SELECT * FROM Orders WHERE status='Processing'");
-            while($o=$orders->fetch_assoc()){
-                $drivers=""; $dres=$conn->query("SELECT * FROM Driver WHERE availability=1");
-                while($d=$dres->fetch_assoc()) $drivers.="<option value='{$d['driver_id']}'>ID:{$d['driver_id']} - {$d['name']}</option>";
-                echo "<tr><td>{$o['order_id']}</td><td>{$o['status']}</td><td><form method='post' style='display:flex;gap:5px;'><input type='hidden' name='order_id' value='{$o['order_id']}'><select name='driver_id' required><option value=''>Select</option>$drivers</select><button name='assign_delivery_driver'>Assign</button></form></td></tr>";
-            }
+            if($orders->num_rows > 0) {
+                while($o=$orders->fetch_assoc()){
+                    $drivers=""; $dres=$conn->query("SELECT * FROM Driver WHERE availability=1");
+                    while($d=$dres->fetch_assoc()) $drivers.="<option value='{$d['driver_id']}'>ID:{$d['driver_id']} - {$d['name']}</option>";
+                    echo "<tr><td>Order #{$o['order_id']}</td><td>{$o['status']}</td><td><form method='post' style='display:flex;gap:5px;'><input type='hidden' name='order_id' value='{$o['order_id']}'><select name='driver_id' required><option value=''>Select</option>$drivers</select><button name='assign_delivery_driver'>Assign</button></form></td></tr>";
+                }
+            } else { echo "<tr><td colspan='3'>No pending orders.</td></tr>"; }
             ?>
             </tbody></table>
         </div>
